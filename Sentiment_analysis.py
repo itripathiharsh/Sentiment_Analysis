@@ -1,5 +1,3 @@
-# pip install transformers torch pandas matplotlib requests huggingface_hub datasets seaborn
-
 from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from torch.nn.functional import softmax
 import torch
@@ -12,13 +10,16 @@ import random
 import json
 import os
 from dotenv import load_dotenv
-from huggingface_hub import login
+
+
 load_dotenv()
-token = os.getenv("HF_TOKEN")
+
+hf_token = os.getenv("HUGGING_FACE_API_KEY") 
+
+if not hf_token:
+    print("Warning: HUGGING_FACE_API_KEY not found in .env file. The script might fail if the model is private.")
 
 
-
-# --- Load Models & Labels ---
 goemotions_model_name = "monologg/bert-base-cased-goemotions-original"
 goemotions_tokenizer = AutoTokenizer.from_pretrained(goemotions_model_name)
 goemotions_model = AutoModelForSequenceClassification.from_pretrained(goemotions_model_name)
@@ -31,11 +32,12 @@ else:
     raise Exception(f"Failed to download emotions file: status code {response.status_code}")
 
 mental_model_name = "mental/mental-bert-base-uncased"
-mental_tokenizer = AutoTokenizer.from_pretrained(mental_model_name)
-mental_model = AutoModelForSequenceClassification.from_pretrained(mental_model_name)
+
+mental_tokenizer = AutoTokenizer.from_pretrained(mental_model_name, token=hf_token)
+mental_model = AutoModelForSequenceClassification.from_pretrained(mental_model_name, token=hf_token)
 mental_labels = ["non-depressed", "depressed"]
 
-# --- Questions Pool ---
+
 question_pool = [
     "How did you feel when you woke up today?",
     "How was your day at work or school?",
@@ -54,7 +56,7 @@ question_pool = [
     "Did you do something just for yourself today?"
 ]
 
-# --- Question Log Setup ---
+
 log_file = "question_log.json"
 if os.path.exists(log_file):
     with open(log_file, "r") as f:
@@ -82,7 +84,7 @@ question_log[today_str] = selected_questions
 with open(log_file, "w") as f:
     json.dump(question_log, f, indent=2)
 
-# --- Emotion Detection ---
+
 def detect_emotion(text):
     inputs = goemotions_tokenizer(text, return_tensors="pt", truncation=True)
     outputs = goemotions_model(**inputs)
@@ -106,7 +108,7 @@ def detect_all_emotions(text):
     probs = softmax(logits, dim=1)[0].detach().cpu().numpy()
     return dict(zip(emotions, probs))
 
-# --- Mental State Detection ---
+
 def detect_mental_state(text):
     inputs = mental_tokenizer(text, return_tensors="pt", truncation=True)
     outputs = mental_model(**inputs)
@@ -114,12 +116,12 @@ def detect_mental_state(text):
     label_id = torch.argmax(probs, dim=1).item()
     return mental_labels[label_id], float(probs[0][label_id])
 
-# --- Collect Responses ---
+
 print("\n🧠 Daily Mood & Mental Health Tracker 🧠\n")
 answers = []
 all_text = ""
 
-# Also collect emotion per question for tracking
+
 emotion_per_question = []
 
 for q in selected_questions:
@@ -127,11 +129,11 @@ for q in selected_questions:
     answers.append(answer)
     all_text += " " + answer
 
-    # Detect full emotion vector per answer for question-level tracking
+    
     emotions_dict = detect_all_emotions(answer)
     emotion_per_question.append(emotions_dict)
 
-# Detect emotions & mental state for whole day's text
+
 top_emotions = detect_emotion(all_text)
 mental_state, mental_score = detect_mental_state(all_text)
 
@@ -141,12 +143,12 @@ for emo, score in top_emotions:
 
 print(f"🧠 Mental State: {mental_state} ({mental_score:.2f})")
 
-# --- Save detailed responses as JSON file ---
+
 responses_dict = {q: a for q, a in zip(selected_questions, answers)}
 with open(f"responses_{today_str}.json", "w") as f:
     json.dump(responses_dict, f, indent=2)
 
-# --- Save daily summary to CSV ---
+
 entry = {
     "timestamp": datetime.now(),
     "responses": json.dumps(responses_dict),
@@ -163,7 +165,7 @@ entry = {
 df_entry = pd.DataFrame([entry])
 df_entry.to_csv("mood_tracker_detailed.csv", mode='a', index=False, header=not os.path.exists("mood_tracker_detailed.csv"))
 
-# --- Save all emotions intensities per day (average over questions) ---
+
 avg_emotions = {emo: 0.0 for emo in emotions}
 for emo_dict in emotion_per_question:
     for emo in emotions:
@@ -175,21 +177,20 @@ avg_emotions['timestamp'] = datetime.now()
 df_all_emotions = pd.DataFrame([avg_emotions])
 df_all_emotions.to_csv("daily_emotions.csv", mode='a', index=False, header=not os.path.exists("daily_emotions.csv"))
 
-# --- Save individual question emotions for future per-question trend analysis ---
+
 per_question_data = {"timestamp": datetime.now()}
 for i, q in enumerate(selected_questions):
     for emo, val in emotion_per_question[i].items():
-        # key: question1_joy, question2_fear, etc.
         key = f"q{i+1}_{emo}"
         per_question_data[key] = val
 df_per_question = pd.DataFrame([per_question_data])
 df_per_question.to_csv("question_emotions_over_time.csv", mode='a', index=False, header=not os.path.exists("question_emotions_over_time.csv"))
 
-# --- Load data for trend analysis and visualization ---
+
 df = pd.read_csv("mood_tracker_detailed.csv")
 df['timestamp'] = pd.to_datetime(df['timestamp'])
 
-# --- Trend Analysis: check if depression score is rising over last 4 days ---
+
 df = df.sort_values('timestamp')
 df['mental_score'] = pd.to_numeric(df['mental_score'], errors='coerce')
 df['rolling_avg_3d'] = df['mental_score'].rolling(window=3).mean()
@@ -199,7 +200,7 @@ if len(df) >= 4:
     if len(last_scores) == 4 and all(x < y for x, y in zip(last_scores, last_scores[1:])):
         print("\n⚠️ Warning: Your depression score has been rising steadily over the last few days.")
 
-# Weekly and monthly averages
+
 df['week'] = df['timestamp'].dt.isocalendar().week
 weekly_avg = df.groupby('week')['mental_score'].mean()
 print("\nWeekly average depression scores:")
@@ -210,9 +211,7 @@ monthly_avg = df.groupby('month')['mental_score'].mean()
 print("\nMonthly average depression scores:")
 print(monthly_avg)
 
-# --- Visualization ---
 
-# Plot mood & mental health scores over time (top 3 emotions + mental_score)
 plt.figure(figsize=(14, 7))
 
 if 'emotion_score_1' in df.columns and df['emotion_score_1'].notna().any():
@@ -233,7 +232,7 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-# --- Heatmap of all emotions over time ---
+
 df_emotions = pd.read_csv("daily_emotions.csv")
 df_emotions['timestamp'] = pd.to_datetime(df_emotions['timestamp'])
 df_emotions = df_emotions.set_index('timestamp')
