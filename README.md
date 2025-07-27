@@ -1,6 +1,9 @@
 Sentiment Analysis & Mood Tracker
 This project is a sophisticated sentiment analysis application designed to track and analyze emotions from text inputs over time. It uses natural language processing to understand the underlying sentiment and logs the data for detailed mood tracking and visualization.
 
+🔴 Live Demo
+You can interact with the live application here: https://thesentimentanalysisapp.streamlit.app/
+
 ✨ Features
 Real-time Sentiment Analysis: Analyzes text input to determine the emotional tone.
 
