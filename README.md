@@ -76,4 +76,8 @@ Here’s a sneak peek of the application in action.
 
 Main Interface: <img width="1230" height="814" alt="Screenshot 2025-07-27 165136" src="https://github.com/user-attachments/assets/6278b8cc-8a06-4122-a9ae-c104d993648c" />
 
+Analysis Results: <img width="1087" height="587" alt="Screenshot 2025-07-27 165204" src="https://github.com/user-attachments/assets/75b4ea8c-ce53-4243-8f11-f939cebd424a" />
+
+<img width="1217" height="524" alt="Screenshot 2025-07-27 165217" src="https://github.com/user-attachments/assets/52329a36-1498-4997-8740-60bf40a0180f" />
+
 
