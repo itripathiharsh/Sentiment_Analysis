@@ -16,7 +16,7 @@ Web Interface: Includes a simple web interface (App.py) to interact with the ana
 📂 Project Structure
 .
 ├── .gitignore               # Specifies files for Git to ignore
-├── App.py                   # The main web application (e.g., Flask, Streamlit)
+├── App.py                   # The main web application (Streamlit)
 ├── Sentiment_analysis.py    # Core logic for the sentiment analysis engine
 ├── daily_emotions.csv       # Log of detected emotions per day
 ├── mood_tracker_detailed.csv# Detailed log for mood tracking
