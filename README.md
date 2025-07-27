@@ -68,4 +68,3 @@ python App.py
 
 This will start the local web server. Open your web browser and navigate to the address provided in the terminal (usually http://127.0.0.1:5000 or similar) to use the application.
 
-This README was generated to provide a clear and comprehensive guide for setting up and running the project.
