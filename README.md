@@ -71,3 +71,9 @@ python App.py
 
 This will start the local web server. Open your web browser and navigate to the address provided in the terminal (usually http://127.0.0.1:5000 or similar) to use the application.
 
+📸 Screenshots
+Here’s a sneak peek of the application in action.
+
+Main Interface: <img width="1230" height="814" alt="Screenshot 2025-07-27 165136" src="https://github.com/user-attachments/assets/6278b8cc-8a06-4122-a9ae-c104d993648c" />
+
+
