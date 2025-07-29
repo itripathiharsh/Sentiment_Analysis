@@ -8,6 +8,7 @@ import requests
 import json
 import os
 import random
+import re
 # NEW: Imports for Text-to-Speech
 from gtts import gTTS
 from io import BytesIO
@@ -102,19 +103,13 @@ def generate_story(mood):
     return "Could not retrieve a story at this time. Please try again later."
 
 def get_activities(mood):
+    """Generates activity suggestions using a more robust Markdown parsing method."""
     gemini_keys = get_gemini_keys()
     if not gemini_keys:
         return None
 
-    prompt = f"For someone feeling {mood}, suggest 3 short-term activities for immediate relief, 2 long-term activities for sustained well-being, and 2 psychological techniques or mindset shifts. For each, provide a brief, one-sentence benefit."
-    schema = {
-        "type": "OBJECT", "properties": {
-            "short_term": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {"activity": {"type": "STRING"}, "benefit": {"type": "STRING"}}, "required": ["activity", "benefit"]}},
-            "long_term": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {"activity": {"type": "STRING"}, "benefit": {"type": "STRING"}}, "required": ["activity", "benefit"]}},
-            "psychological": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {"technique": {"type": "STRING"}, "benefit": {"type": "STRING"}}, "required": ["technique", "benefit"]}}
-        }
-    }
-    payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json", "responseSchema": schema}}
+    prompt = f"For someone feeling {mood}, suggest 3 short-term activities, 2 long-term activities, and 2 psychological techniques. Format the response as a simple markdown list under the headings 'Short-Term:', 'Long-Term:', and 'Psychological:'."
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
     for i, key in enumerate(gemini_keys):
         try:
@@ -123,17 +118,31 @@ def get_activities(mood):
             response.raise_for_status()
             result = response.json()
             if result.get("candidates"):
-                activities_json = json.loads(result["candidates"][0]["content"]["parts"][0]["text"])
-                if "short_term" in activities_json and "long_term" in activities_json and "psychological" in activities_json:
-                    return activities_json
+                content = result["candidates"][0]["content"]["parts"][0]["text"]
+                # Parse the markdown response
+                activities = {"short_term": [], "long_term": [], "psychological": []}
+                current_section = None
+                for line in content.split('\n'):
+                    line = line.strip()
+                    if "short-term" in line.lower():
+                        current_section = "short_term"
+                    elif "long-term" in line.lower():
+                        current_section = "long_term"
+                    elif "psychological" in line.lower():
+                        current_section = "psychological"
+                    elif line.startswith(("*", "-")) and current_section:
+                        activities[current_section].append(line[1:].strip())
+                # Ensure all sections were found
+                if activities["short_term"] and activities["long_term"] and activities["psychological"]:
+                    return activities
         except Exception:
             continue
     
     st.warning("Could not generate personalized activities. Showing default suggestions.")
     return {
-        "short_term": [{"activity": "Take a 5-minute break to stretch.", "benefit": "This helps to release physical tension from your body."}],
-        "long_term": [{"activity": "Establish a consistent daily routine.", "benefit": "Routines provide a sense of stability and control over your day."}],
-        "psychological": [{"technique": "Practice the 3-3-3 rule.", "benefit": "Name 3 things you see, 3 things you hear, and move 3 parts of your body to ground yourself in the present moment."}]
+        "short_term": ["Take a 5-minute break to stretch.", "Listen to a calming song.", "Step outside for fresh air."],
+        "long_term": ["Establish a consistent daily routine.", "Incorporate 15-20 minutes of light exercise."],
+        "psychological": ["Practice the 3-3-3 rule to ground yourself.", "Reframe a negative thought by finding a more balanced perspective."]
     }
 
 # --- Model Loading & Analysis Functions ---
@@ -285,7 +294,6 @@ elif st.session_state.page == 'Results':
             story_text = generate_story(dominant_emotion)
             st.markdown(f"<div style='border-left: 5px solid #ccc; padding-left: 20px; font-style: italic;'>{story_text}</div>", unsafe_allow_html=True)
             
-            # Generate and display audio player
             audio_bytes = text_to_audio(story_text)
             if audio_bytes:
                 st.audio(audio_bytes, format='audio/mp3')
@@ -298,15 +306,15 @@ elif st.session_state.page == 'Results':
             if activities:
                 st.markdown("**For Immediate Relief:**")
                 for act in activities.get("short_term", []):
-                    st.markdown(f"- **{act['activity']}**: {act['benefit']}")
+                    st.markdown(f"- {act}")
                 
                 st.markdown("\n**For Long-Term Well-being:**")
                 for act in activities.get("long_term", []):
-                    st.markdown(f"- **{act['activity']}**: {act['benefit']}")
+                    st.markdown(f"- {act}")
                 
                 st.markdown("\n**Psychological Techniques:**")
                 for act in activities.get("psychological", []):
-                    st.markdown(f"- **{act['technique']}**: {act['benefit']}")
+                    st.markdown(f"- {act}")
             else:
                 st.error("Could not retrieve activities at this time.")
     else:
