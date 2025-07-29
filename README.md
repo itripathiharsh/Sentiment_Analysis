@@ -8,13 +8,24 @@ You can interact with the live application here: https://thesentimentanalysisapp
 Here’s a sneak peek of the application in action.
 
 ## Main Interface & Questions:
-<img width="1230" alt="Main application interface" src="https://github.com/user-attachments/assets/6278b8cc-8a06-4122-a9ae-c104d993648c" />
+<img width="1908" height="842" alt="Screenshot 2025-07-29 100613" src="https://github.com/user-attachments/assets/6c5db608-d324-4278-8321-8e2b647dbf5a" />
+
+## Story and Activities
+<img width="1543" height="881" alt="Screenshot 2025-07-29 100715" src="https://github.com/user-attachments/assets/5c2e47b2-019a-4f0b-a12d-b2a12763a256" />
+<img width="1228" height="765" alt="Screenshot 2025-07-29 100731" src="https://github.com/user-attachments/assets/7f29a262-0e61-4888-bbd3-ffdd4466a06b" />
+
 
 ## Analysis Results:
-<img width="1087" alt="Analysis results for emotions and mental state" src="https://github.com/user-attachments/assets/75b4ea8c-ce53-4243-8f11-f939cebd424a" />
+<img width="1386" height="394" alt="Screenshot 2025-07-29 100650" src="https://github.com/user-attachments/assets/f2e88b93-1c7c-477c-849d-79d3286fda9e" />
+
 
 ## Historical Data Trends:
-<img width="1217" alt="Historical data trends and charts" src="https://github.com/user-attachments/assets/52329a36-1498-4997-8740-60bf40a0180f" />
+<img width="1520" height="588" alt="Screenshot 2025-07-29 100832" src="https://github.com/user-attachments/assets/dd12b76a-d85d-45d5-ac4d-928eac51478f" />
+<img width="630" height="392" alt="Screenshot 2025-07-29 100811" src="https://github.com/user-attachments/assets/15e6c789-0b31-49e2-aa68-2a07031232b5" />
+
+![Up<img width="1498" height="551" alt="Screenshot 2025-07-29 100845" src="https://github.com/user-attachments/assets/6ff36c38-2716-485c-bc98-ba0b7988cac0" />
+loading Screenshot 2025-07-29 100832.png…]()
+
 
 ## ✨ Features
 **Multi-Page Interface:** A clean, navigable UI with separate sections for daily questions, today's results, and historical trends.
