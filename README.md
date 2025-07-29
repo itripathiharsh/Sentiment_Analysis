@@ -20,11 +20,9 @@ Here’s a sneak peek of the application in action.
 
 
 ## Historical Data Trends:
-<img width="1520" height="588" alt="Screenshot 2025-07-29 100832" src="https://github.com/user-attachments/assets/dd12b76a-d85d-45d5-ac4d-928eac51478f" />
 <img width="630" height="392" alt="Screenshot 2025-07-29 100811" src="https://github.com/user-attachments/assets/15e6c789-0b31-49e2-aa68-2a07031232b5" />
-
-![Up<img width="1498" height="551" alt="Screenshot 2025-07-29 100845" src="https://github.com/user-attachments/assets/6ff36c38-2716-485c-bc98-ba0b7988cac0" />
-loading Screenshot 2025-07-29 100832.png…]()
+<img width="1520" height="588" alt="Screenshot 2025-07-29 100832" src="https://github.com/user-attachments/assets/dd12b76a-d85d-45d5-ac4d-928eac51478f" />
+<img width="1498" height="551" alt="Screenshot 2025-07-29 100845" src="https://github.com/user-attachments/assets/b6dce549-1caf-48a6-8a01-05717f526a3e" />
 
 
 ## ✨ Features
