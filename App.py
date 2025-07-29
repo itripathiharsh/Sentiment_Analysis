@@ -6,14 +6,16 @@ from torch.nn.functional import softmax
 from datetime import datetime, timedelta
 import requests
 import json
+import os
 import random
+# NEW: Imports for Text-to-Speech
+from gtts import gTTS
+from io import BytesIO
 
 # Firebase imports
 import firebase_admin
 from firebase_admin import credentials, firestore
-
-# Gemini AI import
-import google.generativeai as genai
+from google.oauth2 import service_account
 
 # --- Page Configuration ---
 st.set_page_config(
@@ -25,7 +27,6 @@ st.set_page_config(
 # --- Firebase Initialization ---
 @st.cache_resource
 def init_connection():
-    """Initializes the connection to the Firebase Firestore database."""
     try:
         if not firebase_admin._apps:
             creds_json = {
@@ -49,105 +50,101 @@ def init_connection():
 
 db = init_connection()
 
+# --- Text-to-Speech Function ---
+def text_to_audio(text):
+    """Converts a string of text into an in-memory audio file."""
+    try:
+        # Clean the text for better speech synthesis
+        clean_text = text.replace("**", "")
+        tts = gTTS(text=clean_text, lang='en')
+        audio_fp = BytesIO()
+        tts.write_to_fp(audio_fp)
+        audio_fp.seek(0) # Rewind the file pointer to the beginning
+        return audio_fp
+    except Exception as e:
+        st.error(f"Could not generate audio for the story. Error: {e}")
+        return None
+
 # --- Gemini API Functions ---
+def get_gemini_keys():
+    keys = []
+    i = 1
+    while True:
+        key_name = f"GEMINI_API_KEY_{i}"
+        key = st.secrets.get(key_name)
+        if key:
+            keys.append(key)
+            i += 1
+        else:
+            break
+    return keys
 
 def generate_story(mood):
-    """Generates a comforting story summary using the Gemini API."""
-    prompt = f"""
-You are a helpful literary assistant. Find a public domain short story that would be comforting and uplifting for someone feeling '{mood}'.
+    gemini_keys = get_gemini_keys()
+    if not gemini_keys:
+        return "Story generation is currently unavailable as no API keys were found."
 
-Provide a summary of the story (around 400-500 words).
-
-At the very end, include the title and the author's name on separate lines in the following format:
-**Title:** [Story Title]
-**Author:** [Author Name]
-"""
-    for i in range(1, 5):  # Try up to 4 API keys
-        key = st.secrets.get(f"GEMINI_API_KEY_{i}")
-        if not key:
-            continue
+    prompt = f"Find a public domain short story that would be comforting and uplifting for someone feeling {mood}. Provide a summary of the story (around 400-500 words). At the end, include the title of the story and the author's name on separate lines, like this:\n\n**Title:** [Story Title]\n**Author:** [Author Name]"
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    
+    for i, key in enumerate(gemini_keys):
         try:
-            genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            result = model.generate_content(prompt)
-            if result.text:
-                return result.text
-            else: # Handle cases where API returns an empty response (e.g., safety blocks)
-                continue
-        except Exception as e:
-            st.warning(f"Story generation failed with key {i}: {e}")
+            api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+            response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'}, timeout=25)
+            response.raise_for_status()
+            result = response.json()
+            if result.get("candidates"):
+                return result["candidates"][0]["content"]["parts"][0]["text"]
+        except requests.exceptions.RequestException:
             continue
-
-    st.error("All Gemini API keys failed. Could not retrieve a story.")
-    return "Could not retrieve a story at this time. The service may be temporarily unavailable."
+    
+    st.error("All Gemini API keys failed. Please check your keys and API quotas.")
+    return "Could not retrieve a story at this time. Please try again later."
 
 def get_activities(mood):
-    """Generates activity suggestions in JSON format using the Gemini API."""
-    prompt = f"""
-You are a helpful mental wellness assistant. Based on the user's current mood '{mood}', generate relaxing and motivating activities in the following JSON format:
+    gemini_keys = get_gemini_keys()
+    if not gemini_keys:
+        return None
 
-{{
-  "short_term": [
-    {{"activity": "...", "benefit": "..."}},
-    ...
-  ],
-  "long_term": [
-    {{"activity": "...", "benefit": "..."}},
-    ...
-  ],
-  "psychological": [
-    {{"technique": "...", "benefit": "..."}},
-    ...
-  ]
-}}
+    prompt = f"For someone feeling {mood}, suggest 3 short-term activities for immediate relief, 2 long-term activities for sustained well-being, and 2 psychological techniques or mindset shifts. For each, provide a brief, one-sentence benefit."
+    schema = {
+        "type": "OBJECT", "properties": {
+            "short_term": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {"activity": {"type": "STRING"}, "benefit": {"type": "STRING"}}, "required": ["activity", "benefit"]}},
+            "long_term": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {"activity": {"type": "STRING"}, "benefit": {"type": "STRING"}}, "required": ["activity", "benefit"]}},
+            "psychological": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {"technique": {"type": "STRING"}, "benefit": {"type": "STRING"}}, "required": ["technique", "benefit"]}}
+        }
+    }
+    payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"responseMimeType": "application/json", "responseSchema": schema}}
 
-Keep each activity concise, helpful, and applicable to someone in that mood.
-"""
-    for i in range(1, 5):  # Try up to 4 API keys
-        key = st.secrets.get(f"GEMINI_API_KEY_{i}")
-        if not key:
-            continue
+    for i, key in enumerate(gemini_keys):
         try:
-            genai.configure(api_key=key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-            result = model.generate_content(prompt)
-            # Clean the response to ensure it's valid JSON
-            response_text = result.text.strip().replace("```json", "").replace("```", "")
-            activities_json = json.loads(response_text)
-            return activities_json
-        except Exception as e:
-            st.warning(f"Activity generation failed with key {i}: {e}")
+            api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+            response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'}, timeout=20)
+            response.raise_for_status()
+            result = response.json()
+            if result.get("candidates"):
+                activities_json = json.loads(result["candidates"][0]["content"]["parts"][0]["text"])
+                if "short_term" in activities_json and "long_term" in activities_json and "psychological" in activities_json:
+                    return activities_json
+        except Exception:
             continue
-
-    # Fallback default if all keys fail
+    
     st.warning("Could not generate personalized activities. Showing default suggestions.")
     return {
-        "short_term": [
-            {"activity": "Drink water and stretch", "benefit": "Immediate physical refreshment"},
-            {"activity": "Take 5 deep breaths", "benefit": "Calms your nervous system"}
-        ],
-        "long_term": [
-            {"activity": "Start a gratitude journal", "benefit": "Improves long-term mental wellbeing"},
-            {"activity": "Create a daily sleep routine", "benefit": "Enhances rest and reduces anxiety"}
-        ],
-        "psychological": [
-            {"technique": "Cognitive reframing", "benefit": "Helps shift negative thoughts"},
-            {"technique": "Progressive muscle relaxation", "benefit": "Reduces tension in the body"}
-        ]
+        "short_term": [{"activity": "Take a 5-minute break to stretch.", "benefit": "This helps to release physical tension from your body."}],
+        "long_term": [{"activity": "Establish a consistent daily routine.", "benefit": "Routines provide a sense of stability and control over your day."}],
+        "psychological": [{"technique": "Practice the 3-3-3 rule.", "benefit": "Name 3 things you see, 3 things you hear, and move 3 parts of your body to ground yourself in the present moment."}]
     }
 
 # --- Model Loading & Analysis Functions ---
 @st.cache_resource
 def load_models():
-    """Loads Hugging Face models and tokenizers for analysis."""
     goemotions_model_name = "monologg/bert-base-cased-goemotions-original"
     mental_model_name = "mental/mental-bert-base-uncased"
     hf_token = st.secrets.get("HUGGING_FACE_API_KEY")
-
     if not hf_token:
         st.error("Hugging Face API Key not found in secrets.")
         st.stop()
-
     goemotions_tokenizer = AutoTokenizer.from_pretrained(goemotions_model_name)
     goemotions_model = AutoModelForSequenceClassification.from_pretrained(goemotions_model_name)
     mental_tokenizer = AutoTokenizer.from_pretrained(mental_model_name, token=hf_token)
@@ -159,7 +156,6 @@ def load_models():
 goemotions_tokenizer, goemotions_model, mental_tokenizer, mental_model, emotions = load_models()
 
 def detect_emotion(text):
-    """Detects top 3 emotions from text using the GoEmotions model."""
     inputs = goemotions_tokenizer(text, return_tensors="pt", truncation=True, padding=True)
     outputs = goemotions_model(**inputs)
     probs = softmax(outputs.logits, dim=1)
@@ -167,7 +163,6 @@ def detect_emotion(text):
     return [(emotions[i], float(top_probs[0][idx])) for idx, i in enumerate(top_ids[0])]
 
 def detect_mental_state(text):
-    """Detects mental state (depressed/non-depressed) using the Mental-BERT model."""
     inputs = mental_tokenizer(text, return_tensors="pt", truncation=True, padding=True)
     outputs = mental_model(**inputs)
     probs = softmax(outputs.logits, dim=1)
@@ -190,7 +185,6 @@ QUESTION_POOL = [
 
 @st.cache_data(ttl=3600)
 def get_daily_questions(user_id):
-    """Provides a new set of 5 questions daily, avoiding recent questions."""
     today = datetime.now().date()
     log_ref = db.collection("users").document(user_id).collection("question_logs").document("log")
     try:
@@ -203,15 +197,13 @@ def get_daily_questions(user_id):
             log_data, recent_questions = [], set()
     except Exception:
         log_data, recent_questions = [], set()
-
     available_questions = [q for q in QUESTION_POOL if q not in recent_questions]
-    if len(available_questions) < 5: # Reset if we run out of fresh questions
+    if len(available_questions) < 5:
         available_questions = QUESTION_POOL
     selected_questions = random.sample(available_questions, 5)
-
     new_log_entry = {"date": today.strftime("%Y-%m-%d"), "questions": selected_questions}
     log_data.append(new_log_entry)
-    log_data = log_data[-10:] # Keep the log from getting too large
+    log_data = log_data[-10:]
     log_ref.set({"history": log_data})
     return selected_questions
 
@@ -243,13 +235,13 @@ if st.session_state.page == 'Home':
     for i, q in enumerate(questions):
         responses[q] = st.text_area(q, key=f"q_{i}")
 
-    if st.button("🔍 Analyze My Day", use_container_width=True, type="primary"):
+    if st.button("🔍 Analyze My Day", use_container_width=True):
         answered_responses = [r for r in responses.values() if r.strip()]
         if not answered_responses:
             st.warning("Please answer at least one question before analyzing.")
         else:
             all_text = " ".join(answered_responses)
-            with st.spinner("Analyzing your responses... This may take a moment."):
+            with st.spinner("Analyzing your responses..."):
                 top_emotions = detect_emotion(all_text)
                 mental_state, mental_score = detect_mental_state(all_text)
                 
@@ -259,18 +251,12 @@ if st.session_state.page == 'Home':
                     "mental_score": mental_score
                 }
                 
-                entry = {
-                    "timestamp": datetime.now(), "responses": json.dumps(responses),
-                    "emotion_1": top_emotions[0][0], "emotion_score_1": top_emotions[0][1],
-                    "emotion_2": top_emotions[1][0], "emotion_score_2": top_emotions[1][1],
-                    "emotion_3": top_emotions[2][0], "emotion_score_3": top_emotions[2][1],
-                    "mental_state": mental_state, "mental_score": mental_score
-                }
+                entry = { "timestamp": datetime.now(), "responses": json.dumps(responses), "emotion_1": top_emotions[0][0], "emotion_score_1": top_emotions[0][1], "emotion_2": top_emotions[1][0], "emotion_score_2": top_emotions[1][1], "emotion_3": top_emotions[2][0], "emotion_score_3": top_emotions[2][1], "mental_state": mental_state, "mental_score": mental_score }
                 try:
                     user_entries_ref = db.collection("users").document(st.session_state.user_id).collection("mood_entries")
                     user_entries_ref.add(entry)
                     st.success("✅ Your entry has been saved!")
-                    set_page('Results')
+                    st.session_state.page = 'Results'
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not save data to Firestore. Error: {e}")
@@ -294,10 +280,15 @@ elif st.session_state.page == 'Results':
 
         st.divider()
         
-        st.subheader(f"📖 A Story For When You're Feeling {dominant_emotion.capitalize()}")
-        with st.spinner("Finding a story for you..."):
-            story = generate_story(dominant_emotion)
-            st.markdown(f"<div style='border-left: 5px solid #ccc; padding-left: 20px; font-style: italic;'>{story}</div>", unsafe_allow_html=True)
+        st.subheader("📖 A Story For You")
+        with st.spinner("Finding and narrating a story for you..."):
+            story_text = generate_story(dominant_emotion)
+            st.markdown(f"<div style='border-left: 5px solid #ccc; padding-left: 20px; font-style: italic;'>{story_text}</div>", unsafe_allow_html=True)
+            
+            # Generate and display audio player
+            audio_bytes = text_to_audio(story_text)
+            if audio_bytes:
+                st.audio(audio_bytes, format='audio/mp3')
         
         st.divider()
 
@@ -329,7 +320,6 @@ elif st.session_state.page == 'Trends':
             user_entries_ref = db.collection("users").document(st.session_state.user_id).collection("mood_entries")
             entries_stream = user_entries_ref.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(30).stream()
             entries_list = [doc.to_dict() for doc in entries_stream]
-
             if not entries_list:
                  st.info("No historical data found. Submit an analysis to get started.")
             else:
@@ -347,15 +337,12 @@ elif st.session_state.page == 'Trends':
                 st.subheader("Emotion & Mental State Scores Over Time")
                 st.line_chart(df.set_index('timestamp')[['emotion_score_1', 'emotion_score_2', 'emotion_score_3', 'mental_score']])
                 
-                df['week'] = df['timestamp'].dt.isocalendar().week.astype(str)
-                df['month'] = df['timestamp'].dt.to_period("M").astype(str)
-                
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.subheader("Weekly Average Mental Score")
+                if not df.empty:
+                    df['week'] = df['timestamp'].dt.isocalendar().week
+                    df['month'] = df['timestamp'].dt.to_period("M").astype(str)
+                    st.subheader("Weekly Average Mental State Score")
                     st.bar_chart(df.groupby('week')['mental_score'].mean())
-                with col2:
-                    st.subheader("Monthly Average Mental Score")
+                    st.subheader("Monthly Average Mental State Score")
                     st.bar_chart(df.groupby('month')['mental_score'].mean())
         except Exception as e:
             st.error(f"Could not load data from Firestore. Error: {e}")
