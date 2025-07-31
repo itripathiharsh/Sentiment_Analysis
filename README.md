@@ -26,7 +26,7 @@ Here’s a sneak peek of the application in action.
 
 
 ## ✨ Features
-**Multi-Page Interface:** A clean, navigable UI with separate sections for daily questions, today's results, and historical trends.
+**Multi-Page Interface:** A clean, navigable UI with separate sections for the daily questionnaire, a new private journal, today's results, and historical trends.
 
 **Dual-Model Sentiment Analysis:** Utilizes two different transformer models for nuanced insights:
 
@@ -35,6 +35,8 @@ Here’s a sneak peek of the application in action.
 **MentalBERT** for assessing text for signs of depression.
 
 **Persistent Cloud Storage:** User entries are saved securely to a Google Firestore database, ensuring data is never lost and can be tracked over time.
+
+**Multi-Language Support:** Users can select their preferred language from a dropdown menu, and the app will use the Google Gemini API to translate the interface, questions, and all generated content.
 
 **Dynamic Daily Questions:** Connects to Firestore to log and rotate daily reflection questions, ensuring users don't get repeats for at least four days.
 
