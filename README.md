@@ -2,7 +2,7 @@
 This is a full-stack web application that serves as a private, intelligent journal. It performs sophisticated sentiment analysis to track and analyze emotions from user inputs, logs data to a persistent cloud database, and provides dynamic, AI-generated content to support the user's well-being.
 
 ## 🔴 Live Demo
-You can interact with the live application here: Sentiment Analysis App
+You can interact with the live application here: [Sentiment Analysis App](https://thesentimentanalysisapp.streamlit.app/)
 
 ## 📸 Screenshots
 ### Main Interface & Multi-Language Support
