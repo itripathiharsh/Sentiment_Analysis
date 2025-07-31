@@ -9,7 +9,6 @@ import json
 import os
 import random
 import re
-# NEW: Imports for Text-to-Speech
 from gtts import gTTS
 from io import BytesIO
 
@@ -52,15 +51,13 @@ def init_connection():
 db = init_connection()
 
 # --- Text-to-Speech Function ---
-def text_to_audio(text):
-    """Converts a string of text into an in-memory audio file."""
+def text_to_audio(text, lang='en'):
     try:
-        # Clean the text for better speech synthesis
-        clean_text = text.replace("**", "")
-        tts = gTTS(text=clean_text, lang='en')
+        clean_text = text.replace("**", "").replace("*", "")
+        tts = gTTS(text=clean_text, lang=lang)
         audio_fp = BytesIO()
         tts.write_to_fp(audio_fp)
-        audio_fp.seek(0) # Rewind the file pointer to the beginning
+        audio_fp.seek(0)
         return audio_fp
     except Exception as e:
         st.error(f"Could not generate audio for the story. Error: {e}")
@@ -68,24 +65,40 @@ def text_to_audio(text):
 
 # --- Gemini API Functions ---
 def get_gemini_keys():
-    keys = []
-    i = 1
-    while True:
-        key_name = f"GEMINI_API_KEY_{i}"
-        key = st.secrets.get(key_name)
-        if key:
-            keys.append(key)
-            i += 1
-        else:
-            break
+    keys = [st.secrets.get(f"GEMINI_API_KEY_{i}") for i in range(1, 5) if st.secrets.get(f"GEMINI_API_KEY_{i}")]
     return keys
 
-def generate_story(mood):
+def translate_text(text_list, target_language):
+    if target_language.lower() == 'english':
+        return text_list
+
+    gemini_keys = get_gemini_keys()
+    if not gemini_keys:
+        return text_list
+
+    combined_text = "|||".join(text_list)
+    prompt = f"Translate the following text to {target_language}. Keep the '|||' separators between each item:\n\n{combined_text}"
+    payload = {"contents": [{"parts": [{"text": prompt}]}]}
+    
+    for key in gemini_keys:
+        try:
+            api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
+            response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'}, timeout=20)
+            response.raise_for_status()
+            result = response.json()
+            if result.get("candidates"):
+                translated_combined_text = result["candidates"][0]["content"]["parts"][0]["text"]
+                return translated_combined_text.split('|||')
+        except requests.exceptions.RequestException:
+            continue
+    return text_list
+
+def generate_story(mood, lang='en'):
     gemini_keys = get_gemini_keys()
     if not gemini_keys:
         return "Story generation is currently unavailable as no API keys were found."
 
-    prompt = f"Find a public domain short story that would be comforting and uplifting for someone feeling {mood}. Provide a summary of the story (around 400-500 words). At the end, include the title of the story and the author's name on separate lines, like this:\n\n**Title:** [Story Title]\n**Author:** [Author Name]"
+    prompt = f"Find a public domain short story that would be comforting and uplifting for someone feeling {mood}. Provide a summary of the story (around 400-500 words) in {lang}. At the end, include the title of the story and the author's name on separate lines, like this:\n\n**Title:** [Story Title]\n**Author:** [Author Name]"
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
     
     for i, key in enumerate(gemini_keys):
@@ -102,13 +115,12 @@ def generate_story(mood):
     st.error("All Gemini API keys failed. Please check your keys and API quotas.")
     return "Could not retrieve a story at this time. Please try again later."
 
-def get_activities(mood):
-    """Generates activity suggestions using a more robust Markdown parsing method."""
+def get_activities(mood, lang='en'):
     gemini_keys = get_gemini_keys()
     if not gemini_keys:
         return None
 
-    prompt = f"For someone feeling {mood}, suggest 3 short-term activities, 2 long-term activities, and 2 psychological techniques. Format the response as a simple markdown list under the headings 'Short-Term:', 'Long-Term:', and 'Psychological:'."
+    prompt = f"For someone feeling {mood}, suggest 3 short-term activities for immediate relief, 2 long-term activities for sustained well-being, and 2 psychological techniques or mindset shifts. Provide the response in {lang}. Format the response as a simple markdown list under the headings '### Short-Term Relief', '### Long-Term Well-being', and '### Psychological Techniques:'."
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
 
     for i, key in enumerate(gemini_keys):
@@ -119,31 +131,25 @@ def get_activities(mood):
             result = response.json()
             if result.get("candidates"):
                 content = result["candidates"][0]["content"]["parts"][0]["text"]
-                # Parse the markdown response
-                activities = {"short_term": [], "long_term": [], "psychological": []}
-                current_section = None
-                for line in content.split('\n'):
-                    line = line.strip()
-                    if "short-term" in line.lower():
-                        current_section = "short_term"
-                    elif "long-term" in line.lower():
-                        current_section = "long_term"
-                    elif "psychological" in line.lower():
-                        current_section = "psychological"
-                    elif line.startswith(("*", "-")) and current_section:
-                        activities[current_section].append(line[1:].strip())
-                # Ensure all sections were found
-                if activities["short_term"] and activities["long_term"] and activities["psychological"]:
-                    return activities
+                return content
         except Exception:
             continue
     
     st.warning("Could not generate personalized activities. Showing default suggestions.")
-    return {
-        "short_term": ["Take a 5-minute break to stretch.", "Listen to a calming song.", "Step outside for fresh air."],
-        "long_term": ["Establish a consistent daily routine.", "Incorporate 15-20 minutes of light exercise."],
-        "psychological": ["Practice the 3-3-3 rule to ground yourself.", "Reframe a negative thought by finding a more balanced perspective."]
-    }
+    return """
+### Short-Term Relief
+- Take a 5-minute break to stretch.
+- Listen to a calming song.
+- Step outside for fresh air.
+
+### Long-Term Well-being
+- Establish a consistent daily routine.
+- Incorporate 15-20 minutes of light exercise.
+
+### Psychological Techniques
+- Practice the 3-3-3 rule to ground yourself.
+- Reframe a negative thought by finding a more balanced perspective.
+"""
 
 # --- Model Loading & Analysis Functions ---
 @st.cache_resource
@@ -223,14 +229,36 @@ if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
 if 'user_id' not in st.session_state:
     st.session_state.user_id = "default_user" 
+if 'language' not in st.session_state:
+    st.session_state.language = 'English'
+if 'responses' not in st.session_state:
+    st.session_state.responses = {}
 
 def set_page(page_name):
     st.session_state.page = page_name
 
 st.sidebar.title("Navigation")
 st.sidebar.button("Home", on_click=set_page, args=('Home',), use_container_width=True)
+st.sidebar.button("Journal", on_click=set_page, args=('Journal',), use_container_width=True)
 st.sidebar.button("Today's Results", on_click=set_page, args=('Results',), use_container_width=True)
 st.sidebar.button("Trends", on_click=set_page, args=('Trends',), use_container_width=True)
+
+st.sidebar.divider()
+
+# --- NEW: Language code mapping for gTTS ---
+LANGUAGE_CODES = {
+    "English": "en",
+    "Hindi": "hi",
+    "Spanish": "es",
+    "French": "fr",
+    "German": "de",
+    "Japanese": "ja"
+}
+
+st.session_state.language = st.sidebar.selectbox(
+    "Select Language",
+    LANGUAGE_CODES.keys()
+)
 
 # --- Page Rendering ---
 
@@ -239,13 +267,19 @@ if st.session_state.page == 'Home':
     st.title("🧠 Daily Reflection")
     st.markdown("Answer today's questions to get an analysis of your emotional state.")
     
-    questions = get_daily_questions(st.session_state.user_id)
-    responses = {}
-    for i, q in enumerate(questions):
-        responses[q] = st.text_area(q, key=f"q_{i}")
+    questions_en = get_daily_questions(st.session_state.user_id)
+    questions_translated = translate_text(questions_en, st.session_state.language)
+    
+    for i, q_translated in enumerate(questions_translated):
+        q_english = questions_en[i]
+        st.session_state.responses[q_english] = st.text_area(
+            q_translated, 
+            value=st.session_state.responses.get(q_english, ""), 
+            key=f"q_{i}"
+        )
 
     if st.button("🔍 Analyze My Day", use_container_width=True):
-        answered_responses = [r for r in responses.values() if r.strip()]
+        answered_responses = [r for r in st.session_state.responses.values() if r and r.strip()]
         if not answered_responses:
             st.warning("Please answer at least one question before analyzing.")
         else:
@@ -260,7 +294,7 @@ if st.session_state.page == 'Home':
                     "mental_score": mental_score
                 }
                 
-                entry = { "timestamp": datetime.now(), "responses": json.dumps(responses), "emotion_1": top_emotions[0][0], "emotion_score_1": top_emotions[0][1], "emotion_2": top_emotions[1][0], "emotion_score_2": top_emotions[1][1], "emotion_3": top_emotions[2][0], "emotion_score_3": top_emotions[2][1], "mental_state": mental_state, "mental_score": mental_score }
+                entry = { "timestamp": datetime.now(), "responses": json.dumps(st.session_state.responses), "emotion_1": top_emotions[0][0], "emotion_score_1": top_emotions[0][1], "emotion_2": top_emotions[1][0], "emotion_score_2": top_emotions[1][1], "emotion_3": top_emotions[2][0], "emotion_score_3": top_emotions[2][1], "mental_state": mental_state, "mental_score": mental_score }
                 try:
                     user_entries_ref = db.collection("users").document(st.session_state.user_id).collection("mood_entries")
                     user_entries_ref.add(entry)
@@ -269,6 +303,44 @@ if st.session_state.page == 'Home':
                     st.rerun()
                 except Exception as e:
                     st.error(f"Could not save data to Firestore. Error: {e}")
+
+# JOURNAL PAGE
+elif st.session_state.page == 'Journal':
+    st.title("✍️ My Daily Journal")
+    
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    journal_ref = db.collection("users").document(st.session_state.user_id).collection("journal_entries").document(today_str)
+    
+    try:
+        doc = journal_ref.get()
+        current_entry = doc.to_dict().get("text", "") if doc.exists else ""
+    except Exception as e:
+        st.error(f"Could not load journal entry: {e}")
+        current_entry = ""
+
+    journal_text = st.text_area("How was your day? What's on your mind?", value=current_entry, height=400, key="journal_entry")
+
+    if st.button("💾 Save Journal Entry", use_container_width=True):
+        if journal_text.strip():
+            try:
+                journal_ref.set({"text": journal_text, "timestamp": datetime.now()})
+                st.success("Your journal entry has been saved!")
+            except Exception as e:
+                st.error(f"Could not save journal entry. Error: {e}")
+        else:
+            st.warning("Please write something before saving.")
+
+    st.divider()
+    st.subheader("Past Entries")
+    try:
+        entries_stream = db.collection("users").document(st.session_state.user_id).collection("journal_entries").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(7).stream()
+        for entry in entries_stream:
+            entry_data = entry.to_dict()
+            with st.expander(f"**{entry.id}**"):
+                st.write(entry_data.get("text"))
+    except Exception as e:
+        st.write("Could not load past entries.")
+
 
 # TODAY'S RESULTS PAGE
 elif st.session_state.page == 'Results':
@@ -291,10 +363,12 @@ elif st.session_state.page == 'Results':
         
         st.subheader("📖 A Story For You")
         with st.spinner("Finding and narrating a story for you..."):
-            story_text = generate_story(dominant_emotion)
+            story_text = generate_story(dominant_emotion, st.session_state.language)
             st.markdown(f"<div style='border-left: 5px solid #ccc; padding-left: 20px; font-style: italic;'>{story_text}</div>", unsafe_allow_html=True)
             
-            audio_bytes = text_to_audio(story_text)
+            # --- FIX: Use the language code mapping ---
+            lang_code = LANGUAGE_CODES.get(st.session_state.language, 'en')
+            audio_bytes = text_to_audio(story_text, lang=lang_code)
             if audio_bytes:
                 st.audio(audio_bytes, format='audio/mp3')
         
@@ -302,19 +376,9 @@ elif st.session_state.page == 'Results':
 
         st.subheader("💡 Activity Suggestions")
         with st.spinner("Finding some helpful activities..."):
-            activities = get_activities(dominant_emotion)
-            if activities:
-                st.markdown("**For Immediate Relief:**")
-                for act in activities.get("short_term", []):
-                    st.markdown(f"- {act}")
-                
-                st.markdown("\n**For Long-Term Well-being:**")
-                for act in activities.get("long_term", []):
-                    st.markdown(f"- {act}")
-                
-                st.markdown("\n**Psychological Techniques:**")
-                for act in activities.get("psychological", []):
-                    st.markdown(f"- {act}")
+            activities_markdown = get_activities(dominant_emotion, st.session_state.language)
+            if activities_markdown:
+                st.markdown(activities_markdown)
             else:
                 st.error("Could not retrieve activities at this time.")
     else:
