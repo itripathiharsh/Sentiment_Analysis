@@ -11,6 +11,8 @@ import random
 import re
 from gtts import gTTS
 from io import BytesIO
+import plotly.graph_objects as go
+import hashlib
 
 # Firebase imports
 import firebase_admin
@@ -20,7 +22,7 @@ from google.oauth2 import service_account
 # --- Page Configuration ---
 st.set_page_config(
     page_title="Mood & Mental Health Tracker",
-    page_icon="🧠",
+    page_icon="😊",
     layout="wide"
 )
 
@@ -50,6 +52,62 @@ def init_connection():
 
 db = init_connection()
 
+# --- Gamification & Trend Analysis Functions ---
+def calculate_streak(user_id, collection_name):
+    try:
+        entries_ref = db.collection("users").document(user_id).collection(collection_name)
+        entries_stream = entries_ref.order_by("timestamp", direction=firestore.Query.DESCENDING).stream()
+        unique_dates = {entry.to_dict()["timestamp"].date() for entry in entries_stream if "timestamp" in entry.to_dict()}
+        if not unique_dates:
+            return 0
+        sorted_dates = sorted(list(unique_dates), reverse=True)
+        streak = 0
+        today = datetime.now().date()
+        yesterday = today - timedelta(days=1)
+        if sorted_dates[0] == today or sorted_dates[0] == yesterday:
+            streak = 1
+            for i in range(len(sorted_dates) - 1):
+                if (sorted_dates[i] - sorted_dates[i+1]).days == 1:
+                    streak += 1
+                else:
+                    break
+        return streak
+    except Exception:
+        return 0
+
+EMOTION_CATEGORIES = {
+    'positive': ['admiration', 'amusement', 'approval', 'caring', 'desire', 'excitement', 'gratitude', 'joy', 'love', 'optimism', 'pride', 'relief'],
+    'negative': ['anger', 'annoyance', 'disappointment', 'disapproval', 'disgust', 'embarrassment', 'fear', 'grief', 'nervousness', 'remorse', 'sadness'],
+    'neutral': ['curiosity', 'neutral', 'realization', 'surprise', 'confusion']
+}
+EMOTION_TO_CATEGORY = {emotion: category for category, emotions in EMOTION_CATEGORIES.items() for emotion in emotions}
+
+# --- Authentication Functions ---
+def hash_password(password):
+    secret_key = st.secrets.get("SECRET_KEY", "default_secret")
+    return hashlib.sha256((password + secret_key).encode()).hexdigest()
+
+def signup_user(username, password):
+    users_ref = db.collection("app_users")
+    if users_ref.document(username).get().exists:
+        return False, "Username already exists."
+    hashed_password = hash_password(password)
+    users_ref.document(username).set({"password": hashed_password})
+    return True, "Signup successful! Please log in."
+
+def login_user(username, password):
+    users_ref = db.collection("app_users")
+    doc = users_ref.document(username).get()
+    if not doc.exists:
+        return False
+    stored_password = doc.to_dict().get("password")
+    hashed_password = hash_password(password)
+    if stored_password == hashed_password:
+        st.session_state.logged_in = True
+        st.session_state.username = username
+        return True
+    return False
+
 # --- Text-to-Speech Function ---
 def text_to_audio(text, lang='en'):
     try:
@@ -71,15 +129,12 @@ def get_gemini_keys():
 def translate_text(text_list, target_language):
     if target_language.lower() == 'english':
         return text_list
-
     gemini_keys = get_gemini_keys()
     if not gemini_keys:
         return text_list
-
     combined_text = "|||".join(text_list)
-    prompt = f"Translate the following text to {target_language}. Keep the '|||' separators between each item:\n\n{combined_text}"
+    prompt = f"Translate the following text to {target_language}. Keep the '|||' separators between each item:\n{combined_text}"
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
-    
     for key in gemini_keys:
         try:
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
@@ -96,12 +151,10 @@ def translate_text(text_list, target_language):
 def generate_story(mood, lang='en'):
     gemini_keys = get_gemini_keys()
     if not gemini_keys:
-        return "Story generation is currently unavailable as no API keys were found."
-
-    prompt = f"Find a public domain short story that would be comforting and uplifting for someone feeling {mood}. Provide a summary of the story (around 400-500 words) in {lang}. At the end, include the title of the story and the author's name on separate lines, like this:\n\n**Title:** [Story Title]\n**Author:** [Author Name]"
+        return "Story generation is currently unavailable."
+    prompt = f"Find a public domain short story that would be comforting and uplifting for someone feeling {mood}. Provide a summary of the story (around 400-500 words) in {lang}. At the end, include the title of the story and the author's name on separate lines, like this:\n**Title:** [Story Title]\n**Author:** [Author Name]"
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
-    
-    for i, key in enumerate(gemini_keys):
+    for key in gemini_keys:
         try:
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
             response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'}, timeout=25)
@@ -111,19 +164,16 @@ def generate_story(mood, lang='en'):
                 return result["candidates"][0]["content"]["parts"][0]["text"]
         except requests.exceptions.RequestException:
             continue
-    
-    st.error("All Gemini API keys failed. Please check your keys and API quotas.")
-    return "Could not retrieve a story at this time. Please try again later."
+    st.error("All Gemini API keys failed.")
+    return "Could not retrieve a story at this time."
 
 def get_activities(mood, lang='en'):
     gemini_keys = get_gemini_keys()
     if not gemini_keys:
         return None
-
-    prompt = f"For someone feeling {mood}, suggest 3 short-term activities for immediate relief, 2 long-term activities for sustained well-being, and 2 psychological techniques or mindset shifts. Provide the response in {lang}. Format the response as a simple markdown list under the headings '### Short-Term Relief', '### Long-Term Well-being', and '### Psychological Techniques:'."
+    prompt = f"For someone feeling {mood}, suggest 3 short-term activities, 2 long-term activities, and 2 psychological techniques. Provide the response in {lang}. Format the response as a simple markdown list under the headings '### Short-Term Relief', '### Long-Term Well-being', and '### Psychological Techniques:'."
     payload = {"contents": [{"parts": [{"text": prompt}]}]}
-
-    for i, key in enumerate(gemini_keys):
+    for key in gemini_keys:
         try:
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}"
             response = requests.post(api_url, json=payload, headers={'Content-Type': 'application/json'}, timeout=20)
@@ -134,22 +184,8 @@ def get_activities(mood, lang='en'):
                 return content
         except Exception:
             continue
-    
     st.warning("Could not generate personalized activities. Showing default suggestions.")
-    return """
-### Short-Term Relief
-- Take a 5-minute break to stretch.
-- Listen to a calming song.
-- Step outside for fresh air.
-
-### Long-Term Well-being
-- Establish a consistent daily routine.
-- Incorporate 15-20 minutes of light exercise.
-
-### Psychological Techniques
-- Practice the 3-3-3 rule to ground yourself.
-- Reframe a negative thought by finding a more balanced perspective.
-"""
+    return "### Short-Term Relief\n- Take a 5-minute break to stretch."
 
 # --- Model Loading & Analysis Functions ---
 @st.cache_resource
@@ -212,209 +248,258 @@ def get_daily_questions(user_id):
             log_data, recent_questions = [], set()
     except Exception:
         log_data, recent_questions = [], set()
+
     available_questions = [q for q in QUESTION_POOL if q not in recent_questions]
     if len(available_questions) < 5:
         available_questions = QUESTION_POOL
     selected_questions = random.sample(available_questions, 5)
+
     new_log_entry = {"date": today.strftime("%Y-%m-%d"), "questions": selected_questions}
     log_data.append(new_log_entry)
     log_data = log_data[-10:]
     log_ref.set({"history": log_data})
     return selected_questions
 
-# --- Page Navigation & State Management ---
+# --- State Management ---
 if 'page' not in st.session_state:
     st.session_state.page = 'Home'
 if 'analysis_results' not in st.session_state:
     st.session_state.analysis_results = None
-if 'user_id' not in st.session_state:
-    st.session_state.user_id = "default_user" 
 if 'language' not in st.session_state:
     st.session_state.language = 'English'
 if 'responses' not in st.session_state:
     st.session_state.responses = {}
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'username' not in st.session_state:
+    st.session_state.username = None
+if 'journal_text' not in st.session_state:
+    st.session_state.journal_text = ""
 
 def set_page(page_name):
     st.session_state.page = page_name
 
-st.sidebar.title("Navigation")
-st.sidebar.button("Home", on_click=set_page, args=('Home',), use_container_width=True)
-st.sidebar.button("Journal", on_click=set_page, args=('Journal',), use_container_width=True)
-st.sidebar.button("Today's Results", on_click=set_page, args=('Results',), use_container_width=True)
-st.sidebar.button("Trends", on_click=set_page, args=('Trends',), use_container_width=True)
+# --- MAIN APP ---
+if not st.session_state.logged_in:
+    st.title("Welcome to the Mood & Mental Health Tracker")
+    choice = st.selectbox("Login or Signup?", ["Login", "Signup"])
+    if choice == "Login":
+        username = st.text_input("Username")
+        password = st.text_input("Password", type="password")
+        if st.button("Login"):
+            if login_user(username, password):
+                st.success("Logged in successfully!")
+                st.rerun()
+            else:
+                st.error("Invalid username or password.")
+    else:
+        username = st.text_input("Choose a Username")
+        password = st.text_input("Choose a Password", type="password")
+        if st.button("Signup"):
+            success, message = signup_user(username, password)
+            if success:
+                st.success(message)
+            else:
+                st.error(message)
+else:
+    # --- AUTHENTICATED APP ---
+    st.sidebar.title(f"Welcome, {st.session_state.username}!")
+    st.sidebar.button("Home", on_click=set_page, args=('Home',), use_container_width=True)
+    st.sidebar.button("Journal", on_click=set_page, args=('Journal',), use_container_width=True)
+    st.sidebar.button("Today's Results", on_click=set_page, args=('Results',), use_container_width=True)
+    st.sidebar.button("Trends", on_click=set_page, args=('Trends',), use_container_width=True)
+    st.sidebar.divider()
 
-st.sidebar.divider()
+    LANGUAGE_CODES = {"English": "en", "Hindi": "hi", "Spanish": "es", "French": "fr", "German": "de", "Japanese": "ja"}
+    st.session_state.language = st.sidebar.selectbox("Select Language", list(LANGUAGE_CODES.keys()))
 
-# --- NEW: Language code mapping for gTTS ---
-LANGUAGE_CODES = {
-    "English": "en",
-    "Hindi": "hi",
-    "Spanish": "es",
-    "French": "fr",
-    "German": "de",
-    "Japanese": "ja"
-}
+    if st.sidebar.button("Logout", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.username = None
+        st.rerun()
 
-st.session_state.language = st.sidebar.selectbox(
-    "Select Language",
-    LANGUAGE_CODES.keys()
-)
+    # --- Page Rendering ---
+    if st.session_state.page == 'Home':
+        st.title("😊 Daily Reflection")
+        reflection_streak = calculate_streak(st.session_state.username, "mood_entries")
+        st.metric(label="Reflection Streak", value=f"{reflection_streak} Days 🔥")
 
-# --- Page Rendering ---
+        st.markdown("Answer today's questions to get an analysis of your emotional state.")
+        questions_en = get_daily_questions(st.session_state.username)
+        questions_translated = translate_text(questions_en, st.session_state.language)
 
-# HOME PAGE
-if st.session_state.page == 'Home':
-    st.title("🧠 Daily Reflection")
-    st.markdown("Answer today's questions to get an analysis of your emotional state.")
-    
-    questions_en = get_daily_questions(st.session_state.user_id)
-    questions_translated = translate_text(questions_en, st.session_state.language)
-    
-    for i, q_translated in enumerate(questions_translated):
-        q_english = questions_en[i]
-        st.session_state.responses[q_english] = st.text_area(
-            q_translated, 
-            value=st.session_state.responses.get(q_english, ""), 
-            key=f"q_{i}"
+        for i, q_translated in enumerate(questions_translated):
+            q_english = questions_en[i]
+            st.session_state.responses[q_english] = st.text_area(
+                q_translated,
+                value=st.session_state.responses.get(q_english, ""),
+                key=f"q_{i}"
+            )
+
+        if st.button("✅ Analyze My Day", use_container_width=True):
+            answered_responses = [r for r in st.session_state.responses.values() if r and r.strip()]
+            if not answered_responses:
+                st.warning("Please answer at least one question before analyzing.")
+            else:
+                all_text = " ".join(answered_responses)
+                with st.spinner("Analyzing your responses..."):
+                    top_emotions = detect_emotion(all_text)
+                    mental_state, mental_score = detect_mental_state(all_text)
+                    st.session_state.analysis_results = {
+                        "top_emotions": top_emotions,
+                        "mental_state": mental_state,
+                        "mental_score": mental_score
+                    }
+                    entry = {
+                        "timestamp": datetime.now(),
+                        "responses": json.dumps(st.session_state.responses),
+                        "emotion_1": top_emotions[0][0],
+                        "emotion_score_1": top_emotions[0][1],
+                        "emotion_2": top_emotions[1][0],
+                        "emotion_score_2": top_emotions[1][1],
+                        "emotion_3": top_emotions[2][0],
+                        "emotion_score_3": top_emotions[2][1],
+                        "mental_state": mental_state,
+                        "mental_score": mental_score
+                    }
+                    try:
+                        user_entries_ref = db.collection("users").document(st.session_state.username).collection("mood_entries")
+                        user_entries_ref.add(entry)
+                        st.success("✅ Your entry has been saved!")
+                        st.session_state.page = 'Results'
+                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Could not save data to Firestore. Error: {e}")
+
+    elif st.session_state.page == 'Journal':
+        st.title("✍️ My Daily Journal")
+        journal_streak = calculate_streak(st.session_state.username, "journal_entries")
+        st.metric(label="Journaling Streak", value=f"{journal_streak} Days 🔥")
+        
+        st.subheader("Write or Edit Your Entry")
+
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        journal_ref = db.collection("users").document(st.session_state.username).collection("journal_entries").document(today_str)
+
+        try:
+            doc = journal_ref.get()
+            if not st.session_state.journal_text and doc.exists:
+                st.session_state.journal_text = doc.to_dict().get("text", "")
+        except Exception as e:
+            st.error(f"Could not load journal entry: {e}")
+
+        st.session_state.journal_text = st.text_area(
+            "How was your day? What's on your mind?",
+            value=st.session_state.journal_text,
+            height=300,
+            key="journal_text_area"
         )
 
-    if st.button("🔍 Analyze My Day", use_container_width=True):
-        answered_responses = [r for r in st.session_state.responses.values() if r and r.strip()]
-        if not answered_responses:
-            st.warning("Please answer at least one question before analyzing.")
-        else:
-            all_text = " ".join(answered_responses)
-            with st.spinner("Analyzing your responses..."):
-                top_emotions = detect_emotion(all_text)
-                mental_state, mental_score = detect_mental_state(all_text)
-                
-                st.session_state.analysis_results = {
-                    "top_emotions": top_emotions,
-                    "mental_state": mental_state,
-                    "mental_score": mental_score
-                }
-                
-                entry = { "timestamp": datetime.now(), "responses": json.dumps(st.session_state.responses), "emotion_1": top_emotions[0][0], "emotion_score_1": top_emotions[0][1], "emotion_2": top_emotions[1][0], "emotion_score_2": top_emotions[1][1], "emotion_3": top_emotions[2][0], "emotion_score_3": top_emotions[2][1], "mental_state": mental_state, "mental_score": mental_score }
+        if st.button("💾 Save Journal Entry", use_container_width=True):
+            if st.session_state.journal_text.strip():
                 try:
-                    user_entries_ref = db.collection("users").document(st.session_state.user_id).collection("mood_entries")
-                    user_entries_ref.add(entry)
-                    st.success("✅ Your entry has been saved!")
-                    st.session_state.page = 'Results'
-                    st.rerun()
+                    journal_ref.set({
+                        "text": st.session_state.journal_text,
+                        "timestamp": datetime.now()
+                    })
+                    st.success("Your journal entry has been saved!")
                 except Exception as e:
-                    st.error(f"Could not save data to Firestore. Error: {e}")
-
-# JOURNAL PAGE
-elif st.session_state.page == 'Journal':
-    st.title("✍️ My Daily Journal")
-    
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    journal_ref = db.collection("users").document(st.session_state.user_id).collection("journal_entries").document(today_str)
-    
-    try:
-        doc = journal_ref.get()
-        current_entry = doc.to_dict().get("text", "") if doc.exists else ""
-    except Exception as e:
-        st.error(f"Could not load journal entry: {e}")
-        current_entry = ""
-
-    journal_text = st.text_area("How was your day? What's on your mind?", value=current_entry, height=400, key="journal_entry")
-
-    if st.button("💾 Save Journal Entry", use_container_width=True):
-        if journal_text.strip():
-            try:
-                journal_ref.set({"text": journal_text, "timestamp": datetime.now()})
-                st.success("Your journal entry has been saved!")
-            except Exception as e:
-                st.error(f"Could not save journal entry. Error: {e}")
-        else:
-            st.warning("Please write something before saving.")
-
-    st.divider()
-    st.subheader("Past Entries")
-    try:
-        entries_stream = db.collection("users").document(st.session_state.user_id).collection("journal_entries").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(7).stream()
-        for entry in entries_stream:
-            entry_data = entry.to_dict()
-            with st.expander(f"**{entry.id}**"):
-                st.write(entry_data.get("text"))
-    except Exception as e:
-        st.write("Could not load past entries.")
-
-
-# TODAY'S RESULTS PAGE
-elif st.session_state.page == 'Results':
-    st.title("✨ Today's Analysis")
-    if st.session_state.analysis_results:
-        results = st.session_state.analysis_results
-        dominant_emotion = results['top_emotions'][0][0]
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            st.subheader("💬 Top Emotions Detected")
-            for emo, score in results['top_emotions']:
-                st.write(f"**{emo.capitalize()}**: {score:.2f}")
-        with col2:
-            st.subheader("🧠 Mental State Analysis")
-            st.write(f"Detected State: **{results['mental_state'].upper()}**")
-            st.write(f"Confidence: **{results['mental_score']:.2f}**")
-
-        st.divider()
-        
-        st.subheader("📖 A Story For You")
-        with st.spinner("Finding and narrating a story for you..."):
-            story_text = generate_story(dominant_emotion, st.session_state.language)
-            st.markdown(f"<div style='border-left: 5px solid #ccc; padding-left: 20px; font-style: italic;'>{story_text}</div>", unsafe_allow_html=True)
-            
-            # --- FIX: Use the language code mapping ---
-            lang_code = LANGUAGE_CODES.get(st.session_state.language, 'en')
-            audio_bytes = text_to_audio(story_text, lang=lang_code)
-            if audio_bytes:
-                st.audio(audio_bytes, format='audio/mp3')
-        
-        st.divider()
-
-        st.subheader("💡 Activity Suggestions")
-        with st.spinner("Finding some helpful activities..."):
-            activities_markdown = get_activities(dominant_emotion, st.session_state.language)
-            if activities_markdown:
-                st.markdown(activities_markdown)
+                    st.error(f"Could not save journal entry. Error: {e}")
             else:
-                st.error("Could not retrieve activities at this time.")
-    else:
-        st.info("Please complete the questionnaire on the 'Home' page to see your results.")
+                st.warning("Please write something before saving.")
 
-# TRENDS PAGE
-elif st.session_state.page == 'Trends':
-    st.title("📈 Historical Trends")
-    with st.spinner("Loading historical data..."):
+        st.divider()
+        st.subheader("Past Entries")
         try:
-            user_entries_ref = db.collection("users").document(st.session_state.user_id).collection("mood_entries")
-            entries_stream = user_entries_ref.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(30).stream()
-            entries_list = [doc.to_dict() for doc in entries_stream]
-            if not entries_list:
-                 st.info("No historical data found. Submit an analysis to get started.")
-            else:
-                df = pd.DataFrame(entries_list)
-                df['timestamp'] = pd.to_datetime(df['timestamp'], errors='coerce')
-                df.dropna(subset=['timestamp'], inplace=True)
-                
-                st.subheader("Most Recent Entry")
-                latest = df.iloc[0]
-                st.write(f"**Date:** {latest['timestamp'].strftime('%Y-%m-%d')}")
-                st.write(f"**Top Emotion:** {latest['emotion_1'].capitalize()} ({latest['emotion_score_1']:.2f})")
-                st.write(f"**Mental State:** {latest['mental_state'].upper()} ({latest['mental_score']:.2f})")
-                st.divider()
-
-                st.subheader("Emotion & Mental State Scores Over Time")
-                st.line_chart(df.set_index('timestamp')[['emotion_score_1', 'emotion_score_2', 'emotion_score_3', 'mental_score']])
-                
-                if not df.empty:
-                    df['week'] = df['timestamp'].dt.isocalendar().week
-                    df['month'] = df['timestamp'].dt.to_period("M").astype(str)
-                    st.subheader("Weekly Average Mental State Score")
-                    st.bar_chart(df.groupby('week')['mental_score'].mean())
-                    st.subheader("Monthly Average Mental State Score")
-                    st.bar_chart(df.groupby('month')['mental_score'].mean())
+            entries_stream = db.collection("users").document(st.session_state.username).collection("journal_entries").order_by("timestamp", direction=firestore.Query.DESCENDING).limit(7).stream()
+            for entry in entries_stream:
+                entry_data = entry.to_dict()
+                with st.expander(f"**{entry.id}**"):
+                    st.write(entry_data.get("text"))
         except Exception as e:
-            st.error(f"Could not load data from Firestore. Error: {e}")
+            st.write("Could not load past entries.")
+
+    elif st.session_state.page == 'Results':
+        st.title("📊 Today's Analysis")
+        if st.session_state.analysis_results:
+            results = st.session_state.analysis_results
+            dominant_emotion = results['top_emotions'][0][0]
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.subheader("😊 Top Emotions Detected")
+                for emo, score in results['top_emotions']:
+                    st.write(f"**{emo.capitalize()}**: {score:.2f}")
+            with col2:
+                st.subheader("🧠 Mental State Analysis")
+                st.write(f"Detected State: **{results['mental_state'].upper()}**")
+                st.write(f"Confidence: **{results['mental_score']:.2f}**")
+
+            st.divider()
+            st.subheader("📖 A Story For You")
+            with st.spinner("Finding and narrating a story for you..."):
+                story_text = generate_story(dominant_emotion, st.session_state.language)
+                st.markdown(f"<div style='border-left: 5px solid #ccc; padding-left: 20px; font-style: italic;'>{story_text}</div>", unsafe_allow_html=True)
+                lang_code = LANGUAGE_CODES.get(st.session_state.language, 'en')
+                audio_bytes = text_to_audio(story_text, lang=lang_code)
+                if audio_bytes:
+                    st.audio(audio_bytes, format='audio/mp3')
+
+            st.divider()
+            st.subheader("🎯 Activity Suggestions")
+            with st.spinner("Finding some helpful activities..."):
+                activities_markdown = get_activities(dominant_emotion, st.session_state.language)
+                if activities_markdown:
+                    st.markdown(activities_markdown)
+                else:
+                    st.error("Could not retrieve activities at this time.")
+        else:
+            st.info("Please complete the questionnaire on the 'Home' page to see your results.")
+
+    elif st.session_state.page == 'Trends':
+        st.title("📈 Historical Trends")
+        with st.spinner("Loading historical data..."):
+            try:
+                user_entries_ref = db.collection("users").document(st.session_state.username).collection("mood_entries")
+                entries_stream = user_entries_ref.order_by("timestamp", direction=firestore.Query.DESCENDING).limit(90).stream()
+                entries_list = [doc.to_dict() for doc in entries_stream]
+
+                if not entries_list:
+                    st.info("No historical data found. Submit an analysis to get started.")
+                else:
+                    df = pd.DataFrame(entries_list)
+                    df['timestamp'] = pd.to_datetime(df['timestamp']).dt.date
+
+                    st.subheader("Dominant Emotions (Last 30 Days)")
+                    thirty_days_ago = datetime.now().date() - timedelta(days=30)
+                    df_30_days = df[df['timestamp'] >= thirty_days_ago]
+                    if not df_30_days.empty:
+                        emotion_counts = df_30_days['emotion_1'].value_counts()
+                        fig_pie = go.Figure(data=[go.Pie(labels=emotion_counts.index, values=emotion_counts.values, hole=.3)])
+                        fig_pie.update_layout(title_text='Emotion Breakdown')
+                        st.plotly_chart(fig_pie, use_container_width=True)
+                    else:
+                        st.write("Not enough data in the last 30 days for a pie chart.")
+
+                    st.divider()
+                    st.subheader("Positive vs. Negative Emotion Trends (Last 30 Days)")
+                    df_30_days['emotion_category'] = df_30_days['emotion_1'].map(EMOTION_TO_CATEGORY)
+                    category_counts = df_30_days.groupby(['timestamp', 'emotion_category']).size().unstack(fill_value=0)
+                    fig_area = go.Figure()
+                    for category in ['positive', 'negative', 'neutral']:
+                        if category in category_counts.columns:
+                            fig_area.add_trace(go.Scatter(
+                                x=category_counts.index,
+                                y=category_counts[category],
+                                mode='lines',
+                                stackgroup='one',
+                                name=category.capitalize()
+                            ))
+                    fig_area.update_layout(title_text='Daily Emotion Category Count')
+                    st.plotly_chart(fig_area, use_container_width=True)
+
+                    st.divider()
+                    st.subheader("Emotion & Mental State Scores Over Time")
+                    st.line_chart(df.set_index('timestamp')[['emotion_score_1', 'mental_score']])
+            except Exception as e:
+                st.error(f"Could not load data from Firestore. Error: {e}")
