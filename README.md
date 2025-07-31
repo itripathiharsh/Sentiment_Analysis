@@ -1,32 +1,34 @@
-# Advanced Sentiment Analysis & Mood Tracker
-This is a full-stack web application that performs sophisticated sentiment analysis to track and analyze emotions from user inputs. It uses multiple AI models to understand emotional tone and mental state, logs the data to a persistent cloud database, and provides dynamic, AI-generated content to support the user's well-being.
+# Advanced AI-Powered Sentiment & Mood Journal
+This is a full-stack web application that serves as a private, intelligent journal. It performs sophisticated sentiment analysis to track and analyze emotions from user inputs, logs data to a persistent cloud database, and provides dynamic, AI-generated content to support the user's well-being.
 
-🔴 Live Demo
-You can interact with the live application here: https://thesentimentanalysisapp.streamlit.app/
+## 🔴 Live Demo
+You can interact with the live application here: Sentiment Analysis App
 
-# 📸 Screenshots
-Here’s a sneak peek of the application in action.
+## 📸 Screenshots
+### Main Interface & Multi-Language Support
+<img width="1849" height="832" alt="Screenshot 2025-08-01 003719" src="https://github.com/user-attachments/assets/7e4ec1b7-2617-4388-bd43-ae1533bfdf71" />
 
-## Main Interface & Questions:
-<img width="1908" height="842" alt="Screenshot 2025-07-29 100613" src="https://github.com/user-attachments/assets/6c5db608-d324-4278-8321-8e2b647dbf5a" />
-
-## Story and Activities
-<img width="1543" height="881" alt="Screenshot 2025-07-29 100715" src="https://github.com/user-attachments/assets/5c2e47b2-019a-4f0b-a12d-b2a12763a256" />
-<img width="1228" height="765" alt="Screenshot 2025-07-29 100731" src="https://github.com/user-attachments/assets/7f29a262-0e61-4888-bbd3-ffdd4466a06b" />
+### Daily Journal Section
+<img width="1815" height="904" alt="Screenshot 2025-08-01 003202" src="https://github.com/user-attachments/assets/c7bf8ddc-c843-46ca-bcd6-3fc3ed2db3bf" />
+<img width="1485" height="849" alt="Screenshot 2025-08-01 003218" src="https://github.com/user-attachments/assets/e3ace297-4abb-46a5-b6da-bb29c5195630" />
 
 
-## Analysis Results:
-<img width="1386" height="394" alt="Screenshot 2025-07-29 100650" src="https://github.com/user-attachments/assets/f2e88b93-1c7c-477c-849d-79d3286fda9e" />
+### AI-Generated Story with Audio & Activity Suggestions
+<img width="1543" alt="AI-generated story with audio player" src="https://github.com/user-attachments/assets/5c2e47b2-019a-4f0b-a12d-b2a12763a256" />
+<img width="1228" alt="AI-generated activity suggestions" src="https://github.com/user-attachments/assets/7f29a262-0e61-4888-bbd3-ffdd4466a06b" />
 
-
-## Historical Data Trends:
-<img width="630" height="392" alt="Screenshot 2025-07-29 100811" src="https://github.com/user-attachments/assets/15e6c789-0b31-49e2-aa68-2a07031232b5" />
-<img width="1520" height="588" alt="Screenshot 2025-07-29 100832" src="https://github.com/user-attachments/assets/dd12b76a-d85d-45d5-ac4d-928eac51478f" />
-<img width="1498" height="551" alt="Screenshot 2025-07-29 100845" src="https://github.com/user-attachments/assets/b6dce549-1caf-48a6-8a01-05717f526a3e" />
+### Analysis and Trends
+<img width="1446" height="665" alt="Screenshot 2025-08-01 003235" src="https://github.com/user-attachments/assets/bf088735-d038-4752-a40a-d7f46670e02b" />
+<img width="1440" height="695" alt="Screenshot 2025-08-01 003248" src="https://github.com/user-attachments/assets/92fe3bb7-1707-4f49-81ad-8c0099c4437e" />
+<img width="1459" height="566" alt="Screenshot 2025-08-01 003301" src="https://github.com/user-attachments/assets/4f6a39ea-3855-4199-a7ff-54a8fbb63363" />
 
 
 ## ✨ Features
-**Multi-Page Interface:** A clean, navigable UI with separate sections for the daily questionnaire, a new private journal, today's results, and historical trends.
+**Secure Multi-User Authentication:** A complete login/signup system ensures that all user data, including journal and mood entries, is kept private.
+
+**Persistent Cloud Storage:** All user data is saved securely to a Google Firestore database.
+
+**Multi-Page Interface:** A clean, navigable UI with separate sections for the daily questionnaire, a private journal, today's results, and historical trends.
 
 **Dual-Model Sentiment Analysis:** Utilizes two different transformer models for nuanced insights:
 
@@ -34,25 +36,32 @@ Here’s a sneak peek of the application in action.
 
 **MentalBERT** for assessing text for signs of depression.
 
-**Persistent Cloud Storage:** User entries are saved securely to a Google Firestore database, ensuring data is never lost and can be tracked over time.
+**Gamified Streaks:** Motivates users by tracking and displaying their consecutive daily streaks for both reflections and journal entries.
 
-**Multi-Language Support:** Users can select their preferred language from a dropdown menu, and the app will use the Google Gemini API to translate the interface, questions, and all generated content.
+**Advanced Trend Analysis:** The "Trends" page features multiple visualizations:
 
-**Dynamic Daily Questions:** Connects to Firestore to log and rotate daily reflection questions, ensuring users don't get repeats for at least four days.
+A **pie chart of dominant emotions** over the last 30 days.
 
-**AI-Generated Stories:** Uses the Google Gemini API to find and summarize a real, public domain short story from a classic author that matches the user's dominant mood.
+A **stacked area** chart comparing **positive vs. negative emotion** trends.
 
-**AI-Generated Activities:** Leverages the Google Gemini API to generate personalized activities based on the user's mood, broken down into:
+**AI-Generated Stories with Audio:** Uses the Google Gemini API to find and summarize a real, public domain short story from a classic author that matches the user's dominant mood. Includes a text-to-speech feature to listen to the story.
 
-**Short-Term activities** for immediate relief.
+**AI-Generated Activities:** Leverages the Google Gemini API to generate personalized activities based on the user's mood, broken down into short-term, long-term, and psychological techniques.
 
-**Long-Term activities** for sustained well-being.
+**Multi-Language Support:** Users can select their preferred language, and the app uses the Google Gemini API to translate the interface, questions, and all generated content.
 
-**Psychological technique**s with explanations.
+## 🛠️ Technology Stack
+**Frontend:** Streamlit
 
-**Secure Deployment:** Deployed on Streamlit Cloud, using secrets management for Hugging Face, Google Cloud (Firebase), and Gemini API credentials.
+**Backend & Database:** Google Firestore
 
-## 📂 Project Structure
+**Sentiment Analysis:** Hugging Face Transformers (PyTorch)
+
+**Generative AI:** Google Gemini API
+
+**Deployment:** Streamlit Cloud
+
+**📂 Project Structure**
 .
 ├── .gitignore               # Specifies files for Git to ignore
 ├── App.py                   # The main Streamlit web application
@@ -76,7 +85,7 @@ Clone the repository:
 git clone [https://github.com/itripathiharsh/Sentiment_Analysis.git](https://github.com/itripathiharsh/Sentiment_Analysis.git)
 cd Sentiment_Analysis
 
-# Create and activate a virtual environment:
+Create and activate a virtual environment:
 
 ## For Windows
 python -m venv venv
@@ -95,11 +104,25 @@ Create a folder named .streamlit in the project root, and inside it, create a fi
 
 Open secrets.toml and add your keys in the following format:
 
-# Hugging Face API Key
+## Secret key for hashing passwords (can be any random string)
+SECRET_KEY = "your_strong_secret_key_here"
+
+## Hugging Face API Key
 HUGGING_FACE_API_KEY = "your_hf_token_here"
 
-# Numbered Google Gemini API Keys
+## Numbered Google Gemini API Keys
 GEMINI_API_KEY_1 = "your_gemini_key_1"
 GEMINI_API_KEY_2 = "your_gemini_key_2"
 
-# Firebase
+## Firebase Service Account Credentials
+[firebase]
+type = "service_account"
+project_id = "your-project-id"
+### ... (copy all other fields from your Firebase JSON key file) ...
+
+Usage
+To run the web application locally, execute the following command:
+
+streamlit run App.py
+
+Open your web browser and navigate to the local address provided (usually http://localhost:8501).
