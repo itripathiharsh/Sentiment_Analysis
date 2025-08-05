@@ -6,6 +6,9 @@
 **[Green Minds](https://thesentimentanalysisapp.streamlit.app/)**
 
 
+Visit the link to see working: https://vimeo.com/1107494438?share=copy#t=0
+
+
 
 **Green Minds** is a comprehensive, AI-enhanced web application designed to be a companion for mental and spiritual well-being. It combines daily journaling with advanced sentiment analysis, a suite of cognitive and mindfulness exercises, and daily wisdom from ancient texts to provide a holistic approach to mental health.
 
