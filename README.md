@@ -1,128 +1,162 @@
-# Advanced AI-Powered Sentiment & Mood Journal
-This is a full-stack web application that serves as a private, intelligent journal. It performs sophisticated sentiment analysis to track and analyze emotions from user inputs, logs data to a persistent cloud database, and provides dynamic, AI-generated content to support the user's well-being.
-
-## 🔴 Live Demo
-You can interact with the live application here: [Sentiment Analysis App](https://thesentimentanalysisapp.streamlit.app/)
-
-## 📸 Screenshots
-### Main Interface & Multi-Language Support
-<img width="1849" height="832" alt="Screenshot 2025-08-01 003719" src="https://github.com/user-attachments/assets/7e4ec1b7-2617-4388-bd43-ae1533bfdf71" />
-
-### Daily Journal Section
-<img width="1815" height="904" alt="Screenshot 2025-08-01 003202" src="https://github.com/user-attachments/assets/c7bf8ddc-c843-46ca-bcd6-3fc3ed2db3bf" />
-<img width="1485" height="849" alt="Screenshot 2025-08-01 003218" src="https://github.com/user-attachments/assets/e3ace297-4abb-46a5-b6da-bb29c5195630" />
+# Green Minds 🌱
+**An AI-Powered Mental Wellness Journal & Toolkit**
 
 
-### AI-Generated Story with Audio & Activity Suggestions
-<img width="1543" alt="AI-generated story with audio player" src="https://github.com/user-attachments/assets/5c2e47b2-019a-4f0b-a12d-b2a12763a256" />
-<img width="1228" alt="AI-generated activity suggestions" src="https://github.com/user-attachments/assets/7f29a262-0e61-4888-bbd3-ffdd4466a06b" />
 
-### Analysis and Trends
-<img width="1446" height="665" alt="Screenshot 2025-08-01 003235" src="https://github.com/user-attachments/assets/bf088735-d038-4752-a40a-d7f46670e02b" />
-<img width="1440" height="695" alt="Screenshot 2025-08-01 003248" src="https://github.com/user-attachments/assets/92fe3bb7-1707-4f49-81ad-8c0099c4437e" />
-<img width="1459" height="566" alt="Screenshot 2025-08-01 003301" src="https://github.com/user-attachments/assets/4f6a39ea-3855-4199-a7ff-54a8fbb63363" />
+**[Green Minds](https://thesentimentanalysisapp.streamlit.app/)**
 
 
-## ✨ Features
-**Secure Multi-User Authentication:** A complete login/signup system ensures that all user data, including journal and mood entries, is kept private.
 
-**Persistent Cloud Storage:** All user data is saved securely to a Google Firestore database.
+**Green Minds** is a comprehensive, AI-enhanced web application designed to be a companion for mental and spiritual well-being. It combines daily journaling with advanced sentiment analysis, a suite of cognitive and mindfulness exercises, and daily wisdom from ancient texts to provide a holistic approach to mental health.
 
-**Multi-Page Interface:** A clean, navigable UI with separate sections for the daily questionnaire, a private journal, today's results, and historical trends.
+# ✨ Key Features
+## 🧠 Core AI & Journaling
+**AI-Powered Daily Analysis:** Answer daily rotating questions and receive a detailed analysis of your emotional state (powered by GoEmotions) and mental state (powered by a fine-tuned bertweet sentiment model).
 
-**Dual-Model Sentiment Analysis:** Utilizes two different transformer models for nuanced insights:
+**Secure Daily Journal:** A private, secure space to write down your thoughts and feelings, with entries saved to Firestore.
 
-**GoEmotions** for detecting a wide range of 27 emotions.
+**Anonymous Community Sharing:** Optionally share your journal entries anonymously with the community to give and receive support.
 
-**MentalBERT** for assessing text for signs of depression.
+**AI-Generated Stories & Activities:** Based on your mood analysis, the app provides personalized, AI-generated short stories and wellness activities using a robust fallback system (Groq & Gemini).
 
-**Gamified Streaks:** Motivates users by tracking and displaying their consecutive daily streaks for both reflections and journal entries.
+## 🧘 Wellness Toolkit
+**Cognitive Games:** A suite of games to improve focus, memory, and processing speed, including:
 
-**Advanced Trend Analysis:** The "Trends" page features multiple visualizations:
+**Number Tap Challenge:** Test your speed and attention.
 
-A **pie chart of dominant emotions** over the last 30 days.
+**Memory Match:** A classic card-pairing game.
 
-A **stacked area** chart comparing **positive vs. negative emotion** trends.
+**AI-Powered Brain Teasers:** Get a new, unique riddle every time.
 
-**AI-Generated Stories with Audio:** Uses the Google Gemini API to find and summarize a real, public domain short story from a classic author that matches the user's dominant mood. Includes a text-to-speech feature to listen to the story.
+**AI-Powered Word Scramble:** Unscramble new words generated on the fly.
 
-**AI-Generated Activities:** Leverages the Google Gemini API to generate personalized activities based on the user's mood, broken down into short-term, long-term, and psychological techniques.
+**Simon Says:** Test your memory with this classic color-sequence game.
 
-**Multi-Language Support:** Users can select their preferred language, and the app uses the Google Gemini API to translate the interface, questions, and all generated content.
+**Mindfulness & Vision Exercises:** Guided routines to reduce stress and eye strain, including a Breathing Pacer, Guided Body Scan, and Focus Shift Drills.
 
-## 🛠️ Technology Stack
+**Emotional & Reflective Activities:** Tools like a Gratitude Wheel and a Compliment Generator to foster positive thinking.
+
+## 📖 Spiritual & Memory Corner
+**Geeta Gyaan (Wisdom of the Gita):** Receive a "Shlok of the Day" from the Bhagavad Gita, complete with Sanskrit text, translation, and detailed meaning, fetched daily from a live API.
+
+**My People:** A digital memory aid to help you remember important people in your life. Store names, relationships, photos (local upload or URL), key memories, and important details.
+
+## 📊 Tracking & Community
+**Historical Trends:** Visualize your emotional trends and wellness activity engagement over time with interactive charts and graphs.
+
+**Daily Scorecard:** Track your performance and completion of wellness exercises each day.
+
+**Community Reflections:** Read and react to anonymous journal entries from other users in a safe and supportive environment.
+
+## 🛠️ Tech Stack
 **Frontend:** Streamlit
 
-**Backend & Database:** Google Firestore
+**Database:** Google Firestore
 
-**Sentiment Analysis:** Hugging Face Transformers (PyTorch)
+**Machine Learning & NLP:**
 
-**Generative AI:** Google Gemini API
+PyTorch
 
-**Deployment:** Streamlit Cloud
+Hugging Face Transformers for sentiment and emotion models.
 
-**📂 Project Structure**
-.
-├── .gitignore               # Specifies files for Git to ignore
-├── App.py                   # The main Streamlit web application
-├── Sentiment_analysis.py    # Standalone script for local, terminal-based analysis
-├── packages.txt             # System-level dependencies for Streamlit Cloud
-└── requirements.txt         # Python dependencies for the project
+**Generative AI APIs:**
 
-Note: Local data files like CSVs are only generated when running Sentiment_analysis.py. The deployed app uses Firestore exclusively.
+Groq API (Llama 3)
 
-## 🚀 Getting Started (Local Development)
-Follow these instructions to run the application on your local machine.
+Google Gemini API
 
-Prerequisites
-Python 3.8+
+**External APIs:**
 
-Git
+Bhagavad Gita API
 
-Installation
-Clone the repository:
+**Other Key Libraries:** Pandas, Plotly, gTTS.
 
-git clone [https://github.com/itripathiharsh/Sentiment_Analysis.git](https://github.com/itripathiharsh/Sentiment_Analysis.git)
-cd Sentiment_Analysis
+## 🚀 Getting Started
+Follow these steps to set up and run the project locally.
 
-Create and activate a virtual environment:
+### 1. Prerequisites
+Python 3.9+
 
-## For Windows
+A Firebase project with Firestore enabled.
+
+API keys for Hugging Face, RapidAPI (for the Gita API), and at least one generative AI provider (Groq or Gemini).
+
+### 2. Clone the Repository
+git clone [https://github.com/your-username/green-minds-app.git](https://github.com/your-username/green-minds-app.git)
+cd green-minds-app
+
+### 3. Set Up a Virtual Environment
+It's recommended to use a virtual environment to manage dependencies.
+
+# For Windows
 python -m venv venv
-.\venv\Scripts\activate
+venv\Scripts\activate
 
-## For macOS/Linux
+# For macOS/Linux
 python3 -m venv venv
 source venv/bin/activate
 
-Install the required dependencies:
+### 4. Install Dependencies
+Install all the required Python libraries from the requirements.txt file.
 
 pip install -r requirements.txt
 
-Set up your local secrets:
-Create a folder named .streamlit in the project root, and inside it, create a file named secrets.toml. This file will hold all your secret API keys. The .gitignore file is already configured to prevent this folder from being uploaded to GitHub.
+### 5. Configure Your Secrets
+The application uses Streamlit's secrets management. Create a file at .streamlit/secrets.toml and add your credentials.
 
-Open secrets.toml and add your keys in the following format:
+Create the folder:
 
-## Secret key for hashing passwords (can be any random string)
-SECRET_KEY = "your_strong_secret_key_here"
+mkdir .streamlit
 
-## Hugging Face API Key
-HUGGING_FACE_API_KEY = "your_hf_token_here"
+Create the secrets.toml file inside it and add the following content:
 
-## Numbered Google Gemini API Keys
-GEMINI_API_KEY_1 = "your_gemini_key_1"
-GEMINI_API_KEY_2 = "your_gemini_key_2"
+# .streamlit/secrets.toml
 
-## Firebase Service Account Credentials
+# Hugging Face API Key (must have "Read" permissions)
+HUGGING_FACE_API_KEY = "hf_YourKeyHere"
+
+# RapidAPI Key for Bhagavad Gita API
+[api_keys]
+rapidapi = "YourRapidAPIKeyHere"
+
+# Generative AI Keys (add as many as you have)
+GROQ_API_KEY_1 = "gsk_YourGroqKeyHere"
+GEMINI_API_KEY_1 = "AIzaSy...YourGeminiKeyHere"
+
+# Firebase Service Account Credentials
 [firebase]
 type = "service_account"
-project_id = "your-project-id"
-### ... (copy all other fields from your Firebase JSON key file) ...
+project_id = "your-firebase-project-id"
+private_key_id = "your-firebase-private-key-id"
+private_key = """-----BEGIN PRIVATE KEY-----\nYourPrivateKeyHere\n-----END PRIVATE KEY-----\n"""
+client_email = "your-firebase-client-email"
+client_id = "your-firebase-client-id"
+auth_uri = "[https://accounts.google.com/o/oauth2/auth](https://accounts.google.com/o/oauth2/auth)"
+token_uri = "[https://oauth2.googleapis.com/token](https://oauth2.googleapis.com/token)"
+auth_provider_x509_cert_url = "[https://www.googleapis.com/oauth2/v1/certs](https://www.googleapis.com/oauth2/v1/certs)"
+client_x509_cert_url = "your-firebase-cert-url"
 
-Usage
-To run the web application locally, execute the following command:
+### 6. Run the Application
+Once your secrets are configured, you can run the app with a single command:
 
 streamlit run App.py
 
-Open your web browser and navigate to the local address provided (usually http://localhost:8501).
+The application should now be running in your web browser!
+
+🤝 Contributing
+Contributions are what make the open-source community such an amazing place to learn, inspire, and create. Any contributions you make are greatly appreciated.
+
+If you have a suggestion that would make this better, please fork the repo and create a pull request. You can also simply open an issue with the tag "enhancement".
+
+Fork the Project
+
+Create your Feature Branch (git checkout -b feature/AmazingFeature)
+
+Commit your Changes (git commit -m 'Add some AmazingFeature')
+
+Push to the Branch (git push origin feature/AmazingFeature)
+
+Open a Pull Request
+
+📜 License
+Distributed under the MIT License. See LICENSE for more information.
