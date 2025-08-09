@@ -59,40 +59,45 @@ Positive Thinking Tools:
 - **Community Reflections:** Read & react to anonymous entries.
 
 ## 🚀 Try It Now
-- Clone the Repo
+### Clone the Repo
 
-bash
-Copy
-Edit
-git clone https://github.com/your-username/green-minds-app.git
-cd green-minds-app
-Set Up Environment
+- git clone https://github.com/your-username/green-minds-app.git
 
-bash
-Copy
-Edit
-python -m venv venv
-source venv/bin/activate  # macOS/Linux
-venv\Scripts\activate     # Windows
-pip install -r requirements.txt
-Configure Secrets (API keys & Firebase) in .streamlit/secrets.toml.
+- cd green-minds-app
 
-- Run App
+### Set Up Environment
 
-bash
-Copy
-Edit
-streamlit run App.py
-🛠 Tech Stack
-Frontend: Streamlit
-Database: Google Firestore
-ML/NLP: PyTorch, Hugging Face Transformers (GoEmotions, fine-tuned BERTweet)
-Generative AI: Groq API (Llama 3), Google Gemini API
-External APIs: Bhagavad Gita API
-Libraries: Pandas, Plotly, gTTS
+- python -m venv venv
+
+- source venv/bin/activate  # macOS/Linux
+
+- venv\Scripts\activate     # Windows
+
+- pip install -r requirements.txt
+
+### Configure Secrets (API keys & Firebase) in .streamlit/secrets.toml.
+
+### Run App
+
+- streamlit run App.py
+
+## 🛠 Tech Stack
+
+- Frontend: Streamlit
+
+- Database: Google Firestore
+
+- ML/NLP: PyTorch, Hugging Face Transformers (GoEmotions, fine-tuned BERTweet)
+
+- Generative AI: Groq API (Llama 3), Google Gemini API
+
+- External APIs: Bhagavad Gita API
+
+-Libraries: Pandas, Plotly, gTTS
 
 ## 🤝 Contributing
 We welcome ideas, bug reports, and feature requests!
+
 Fork → Create Branch → Commit → Push → PR.
 
 ## 📜 License
