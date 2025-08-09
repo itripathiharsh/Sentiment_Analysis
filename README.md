@@ -69,9 +69,9 @@ Positive Thinking Tools:
 
 - python -m venv venv
 
-- source venv/bin/activate  # macOS/Linux
+- source venv/bin/activate  - **macOS/Linux**
 
-- venv\Scripts\activate     # Windows
+- venv\Scripts\activate     - **Windows**
 
 - pip install -r requirements.txt
 
@@ -83,17 +83,17 @@ Positive Thinking Tools:
 
 ## 🛠 Tech Stack
 
-- Frontend: Streamlit
+- **Frontend:** Streamlit
 
-- Database: Google Firestore
+- **Database:** Google Firestore
 
-- ML/NLP: PyTorch, Hugging Face Transformers (GoEmotions, fine-tuned BERTweet)
+- **ML/NLP:** PyTorch, Hugging Face Transformers (GoEmotions, fine-tuned BERTweet)
 
-- Generative AI: Groq API (Llama 3), Google Gemini API
+- **Generative AI:** Groq API (Llama 3), Google Gemini API
 
-- External APIs: Bhagavad Gita API
+- **External APIs:** Bhagavad Gita API
 
--Libraries: Pandas, Plotly, gTTS
+- **Libraries:** Pandas, Plotly, gTTS
 
 ## 🤝 Contributing
 We welcome ideas, bug reports, and feature requests!
