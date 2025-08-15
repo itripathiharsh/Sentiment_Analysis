@@ -3,7 +3,7 @@ Your AI-Powered Mental Wellness Journal & Toolkit
 A personal and community space for mind, emotions, and spirit — powered by cutting-edge AI.
 
 ### 🎥 Demo Video: [Watch here](https://vimeo.com/1107494438?share=copy#t=0)
-### 🌐 Live App: [thesentimentanalysisapp.streamlit.app](https://vimeo.com/1107494438?share=copy#t=0)
+### 🌐 Live App: [thesentimentanalysisapp.streamlit.app](https://thesentimentanalysisapp.streamlit.app/)
 
 ## 💡 Why Green Minds?
 The modern world takes a toll on our mental and spiritual health. People want:
